@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*' # 当推送以 v 开头的标签时触发，例如 v1.0.0
 
+# 设置权限
+permissions:
+  contents: write # 允许工作流写入仓库内容（创建发布）
+
 jobs:
   build:
     name: 构建和发布
@@ -18,7 +22,7 @@ jobs:
       - name: 设置 Go 环境
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23'
+          go-version: '1.22' # 使用当前最新的稳定版本
           cache: true
 
       - name: 获取版本号
@@ -58,10 +62,14 @@ jobs:
           
           # 创建 SHA256 校验和文件
           sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          
+          # 列出所有文件以进行调试
+          echo "构建的文件列表:"
+          ls -la
 
       - name: 创建发布
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: 发布 ${{ steps.get_version.outputs.VERSION }}
           draft: false
@@ -116,4 +124,5 @@ jobs:
             
             [SHA256SUMS.txt](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/SHA256SUMS.txt)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 使用 GITHUB_TOKEN 环境变量
+          GITHUB_TOKEN: ${{ github.token }}
