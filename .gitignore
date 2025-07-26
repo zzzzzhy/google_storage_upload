@@ -1,0 +1,30 @@
+# 编译后的二进制文件
+/gsupload
+/google_storage_upload
+
+# 测试数据
+/test_data
+
+# Go 相关
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.sum
+
+# 凭证文件
+*.json
+credentials/
+
+# 编辑器和 IDE 文件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
