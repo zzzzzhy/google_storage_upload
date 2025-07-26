@@ -13,7 +13,7 @@ build
 *.dylib
 *.test
 *.out
-go.sum
+# go.sum  # 不再忽略 go.sum 文件
 
 # 凭证文件
 *.json
