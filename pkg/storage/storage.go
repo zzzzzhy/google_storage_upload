@@ -136,20 +136,32 @@ func (u *Uploader) UploadFile(filePath, objectName string, expirationDays int) (
 func (u *Uploader) UploadDirectory(dirPath, objectPrefix string, expirationDays int) ([]*UploadResult, error) {
 	var results []*UploadResult
 
-	// 确保目录路径以 / 结尾
-	if !strings.HasSuffix(dirPath, string(os.PathSeparator)) {
-		dirPath += string(os.PathSeparator)
+	// 获取目录的绝对路径
+	absPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("获取目录绝对路径失败 %s: %v", dirPath, err)
 	}
 
-	// 确保对象前缀不以 / 开头，但以 / 结尾（如果不为空）
+	// 获取目录的基本名称
+	dirName := filepath.Base(absPath)
+
+	// 处理对象前缀
+	finalPrefix := ""
 	if objectPrefix != "" {
+		// 确保对象前缀不以 / 开头，但以 / 结尾
 		objectPrefix = strings.TrimPrefix(objectPrefix, "/")
 		if !strings.HasSuffix(objectPrefix, "/") {
 			objectPrefix += "/"
 		}
+		// 指定了前缀，则前缀在最前面，后面跟着目录名称
+		finalPrefix = objectPrefix + dirName + "/"
+	} else {
+		// 没有指定前缀，仅使用目录名称作为前缀
+		finalPrefix = dirName + "/"
 	}
 
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	// 使用 filepath.Walk 递归遍历目录
+	err = filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -160,13 +172,13 @@ func (u *Uploader) UploadDirectory(dirPath, objectPrefix string, expirationDays 
 		}
 
 		// 计算相对路径
-		relPath, err := filepath.Rel(dirPath, path)
+		relPath, err := filepath.Rel(absPath, path)
 		if err != nil {
 			return fmt.Errorf("计算相对路径失败 %s: %v", path, err)
 		}
 
-		// 构建对象名称
-		objectName := objectPrefix + strings.ReplaceAll(relPath, "\\", "/")
+		// 构建对象名称，确保使用正斜杠作为路径分隔符
+		objectName := finalPrefix + strings.ReplaceAll(relPath, "\\", "/")
 
 		// 上传文件
 		result, err := u.UploadFile(path, objectName, expirationDays)
@@ -184,6 +196,7 @@ func (u *Uploader) UploadDirectory(dirPath, objectPrefix string, expirationDays 
 		return results, fmt.Errorf("上传目录 %s 失败: %v", dirPath, err)
 	}
 
+	fmt.Printf("成功上传目录 %s 到前缀 %s，共 %d 个文件\n", dirPath, finalPrefix, len(results))
 	return results, nil
 }
 

@@ -18,12 +18,20 @@ echo "这是子目录中的文件" > $TEST_DIR/subdir/file3.txt
 echo "上传单个文件..."
 ./gsupload --bucket=$BUCKET_NAME file $TEST_FILE
 
-# 上传整个目录
-echo "上传整个目录..."
-./gsupload --bucket=$BUCKET_NAME --prefix=test/ dir $TEST_DIR
+# 上传整个目录（不指定前缀，将使用目录名称作为前缀）
+echo "上传整个目录（使用目录名称作为前缀）..."
+./gsupload --bucket=$BUCKET_NAME dir $TEST_DIR
+
+# 上传整个目录（指定前缀）
+echo "上传整个目录（使用自定义前缀）..."
+./gsupload --bucket=$BUCKET_NAME --prefix=custom-prefix/ dir $TEST_DIR
 
 # 列出对象
 echo "列出存储桶中的对象..."
 ./gsupload --bucket=$BUCKET_NAME list
+
+# 列出特定前缀的对象
+echo "列出特定前缀的对象..."
+./gsupload --bucket=$BUCKET_NAME list test_dir/
 
 echo "测试完成！"

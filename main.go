@@ -190,6 +190,12 @@ func uploadDirectory(c *cli.Context) error {
 		return fmt.Errorf("%s 不是一个目录，请使用 'file' 命令上传文件", dirPath)
 	}
 
+	// 获取目录的绝对路径
+	absPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return fmt.Errorf("获取目录绝对路径失败 %s: %v", dirPath, err)
+	}
+
 	// 创建上传器
 	ctx := context.Background()
 	uploader, err := storage.NewUploader(ctx, bucketName, credentialsFile)
@@ -206,7 +212,7 @@ func uploadDirectory(c *cli.Context) error {
 	}
 
 	fmt.Printf("\n目录上传成功！\n")
-	fmt.Printf("目录: %s\n", dirPath)
+	fmt.Printf("目录: %s\n", absPath)
 	fmt.Printf("前缀: %s\n", prefix)
 	fmt.Printf("上传文件数: %d\n", len(results))
 	if expirationDays > 0 {
