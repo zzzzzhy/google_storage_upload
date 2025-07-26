@@ -1,0 +1,116 @@
+name: 发布版本
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送以 v 开头的标签时触发，例如 v1.0.0
+
+jobs:
+  build:
+    name: 构建和发布
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # 获取所有历史记录和标签
+
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          cache: true
+
+      - name: 获取版本号
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: 构建所有平台
+        run: |
+          mkdir -p build
+          # Linux 版本
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_linux_amd64 main.go
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_linux_arm64 main.go
+          GOOS=linux GOARCH=386 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_linux_386 main.go
+          
+          # macOS 版本
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_darwin_amd64 main.go
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_darwin_arm64 main.go
+          
+          # Windows 版本
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_windows_amd64.exe main.go
+          GOOS=windows GOARCH=386 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }} -X 'main.BuildTime=$(date -u '+%Y-%m-%d %H:%M:%S')'" -o build/gsupload_windows_386.exe main.go
+
+      - name: 打包发布文件
+        run: |
+          cd build
+          # 为每个平台创建压缩包
+          tar -czvf gsupload_linux_amd64.tar.gz gsupload_linux_amd64
+          tar -czvf gsupload_linux_arm64.tar.gz gsupload_linux_arm64
+          tar -czvf gsupload_linux_386.tar.gz gsupload_linux_386
+          tar -czvf gsupload_darwin_amd64.tar.gz gsupload_darwin_amd64
+          tar -czvf gsupload_darwin_arm64.tar.gz gsupload_darwin_arm64
+          zip gsupload_windows_amd64.zip gsupload_windows_amd64.exe
+          zip gsupload_windows_386.zip gsupload_windows_386.exe
+          
+          # 创建 SHA256 校验和文件
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+
+      - name: 创建发布
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: 发布 ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            build/gsupload_linux_amd64.tar.gz
+            build/gsupload_linux_arm64.tar.gz
+            build/gsupload_linux_386.tar.gz
+            build/gsupload_darwin_amd64.tar.gz
+            build/gsupload_darwin_arm64.tar.gz
+            build/gsupload_windows_amd64.zip
+            build/gsupload_windows_386.zip
+            build/SHA256SUMS.txt
+          body: |
+            # Google Cloud Storage 上传工具 ${{ steps.get_version.outputs.VERSION }}
+            
+            这是一个用 Go 语言编写的命令行工具，用于将文件或目录上传到 Google Cloud Storage，并支持设置对象过期时间。
+            
+            ## 下载
+            
+            - **Linux**: 
+              - [x86_64 (amd64)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_linux_amd64.tar.gz)
+              - [arm64](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_linux_arm64.tar.gz)
+              - [x86 (386)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_linux_386.tar.gz)
+            
+            - **macOS**:
+              - [Intel (amd64)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_darwin_amd64.tar.gz)
+              - [Apple Silicon (arm64)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_darwin_arm64.tar.gz)
+            
+            - **Windows**:
+              - [64位 (amd64)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_windows_amd64.zip)
+              - [32位 (386)](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_windows_386.zip)
+            
+            ## 安装
+            
+            ### Linux/macOS
+            
+            ```bash
+            # 下载并解压
+            curl -L https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/gsupload_linux_amd64.tar.gz | tar xz
+            
+            # 移动到可执行路径
+            sudo mv gsupload_linux_amd64 /usr/local/bin/gsupload
+            chmod +x /usr/local/bin/gsupload
+            ```
+            
+            ### Windows
+            
+            下载 zip 文件，解压后将可执行文件放在您的 PATH 环境变量包含的目录中。
+            
+            ## 校验和
+            
+            [SHA256SUMS.txt](https://github.com/${{ github.repository }}/releases/download/${{ steps.get_version.outputs.VERSION }}/SHA256SUMS.txt)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

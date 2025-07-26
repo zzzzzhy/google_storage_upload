@@ -15,10 +15,17 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// 版本信息，将由编译时的 ldflags 设置
+var (
+	Version   = "开发版"
+	BuildTime = "未知"
+)
+
 func main() {
 	app := &cli.App{
-		Name:  "gsupload",
-		Usage: "上传文件或目录到 Google Cloud Storage",
+		Name:    "gsupload",
+		Usage:   "上传文件或目录到 Google Cloud Storage",
+		Version: fmt.Sprintf("%s (构建于 %s)", Version, BuildTime),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "bucket",
